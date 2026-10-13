@@ -1,0 +1,230 @@
+/* ==========================================================
+   DermAve IMS - Global styles
+   Theme: black, gold, slight white (from the DermAve logo)
+   ========================================================== */
+
+:root {
+  --black: #0a0a0a;
+  --black-soft: #141414;
+  --black-card: #1a1a1a;
+  --border: #2c2c2c;
+  --gold: #ffe066;
+  --gold-deep: #d4af37;
+  --white: #ffffff;
+  --white-soft: #cfcfcf;
+  --danger: #ff6b6b;
+  --radius: 12px;
+  --font: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font);
+  background: var(--black);
+  color: var(--white);
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+a { color: var(--gold); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ---------- Brand (text version of the logo) ---------- */
+.brand { text-align: center; line-height: 1; }
+.brand__name {
+  font-size: 2.4rem;
+  font-weight: 300;
+  letter-spacing: 2px;
+  color: var(--white);
+}
+.brand__name span { color: var(--gold); }
+.brand__tag {
+  margin-top: 8px;
+  font-size: 0.62rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--white-soft);
+}
+.brand--small .brand__name { font-size: 1.4rem; }
+.brand--small .brand__tag { display: none; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-block;
+  padding: 11px 22px;
+  border-radius: 8px;
+  border: 1px solid var(--gold);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.btn--primary { background: var(--gold); color: var(--black); }
+.btn--primary:hover { background: var(--gold-deep); border-color: var(--gold-deep); }
+.btn--ghost { background: transparent; color: var(--gold); }
+.btn--ghost:hover { background: rgba(255, 224, 102, 0.1); }
+
+/* ==========================================================
+   LOGIN PAGE
+   ========================================================== */
+.login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 80% 10%, rgba(255, 224, 102, 0.08), transparent 40%),
+    var(--black);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--black-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 36px 32px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+}
+
+.login-card__title {
+  margin: 22px 0 24px;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--gold);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.form-group { margin-bottom: 18px; }
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+  color: var(--white-soft);
+}
+.form-group input {
+  width: 100%;
+  padding: 11px 14px;
+  background: var(--black);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--white);
+  font: inherit;
+}
+.form-group input:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(255, 224, 102, 0.15);
+}
+
+.password-wrap { position: relative; }
+.password-wrap button {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--gold);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.form-actions { display: flex; gap: 10px; margin-top: 24px; }
+.form-actions .btn { flex: 1; text-align: center; }
+
+.alert {
+  margin-bottom: 18px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}
+
+/* ==========================================================
+   DASHBOARD PAGE
+   ========================================================== */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 28px;
+  background: var(--black-soft);
+  border-bottom: 1px solid var(--gold-deep);
+}
+
+.nav { display: flex; flex-wrap: wrap; gap: 6px; }
+.nav a {
+  padding: 8px 14px;
+  border-radius: 8px;
+  color: var(--white-soft);
+  font-size: 0.92rem;
+}
+.nav a:hover { color: var(--gold); text-decoration: none; }
+.nav a.active {
+  color: var(--black);
+  background: var(--gold);
+  font-weight: 600;
+}
+
+.topbar__user { font-size: 0.85rem; color: var(--white-soft); }
+.topbar__user a { margin-left: 12px; }
+
+.content { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+.content h1 { font-size: 1.5rem; font-weight: 500; margin-bottom: 4px; }
+.content .subtitle { color: var(--white-soft); margin-bottom: 28px; font-size: 0.9rem; }
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.card {
+  background: var(--black-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  min-height: 170px;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.card:hover { border-color: var(--gold); transform: translateY(-2px); }
+
+.card__label {
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--white-soft);
+}
+.card__value {
+  margin: 10px 0;
+  font-size: 3rem;
+  font-weight: 300;
+  color: var(--gold);
+  line-height: 1;
+}
+.card__note { font-size: 0.82rem; color: var(--white-soft); }
+
+.breakdown { display: flex; gap: 8px; margin-top: 12px; }
+.breakdown span {
+  flex: 1;
+  text-align: center;
+  padding: 6px 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.78rem;
+  color: var(--white);
+}
+.breakdown strong { display: block; color: var(--gold); font-size: 1.1rem; }
+
+@media (max-width: 600px) {
+  .topbar { padding: 12px 16px; }
+  .content { padding: 24px 16px; }
+}

@@ -1,0 +1,12 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local config and secrets (add if you move real credentials out of config.php)
+.env
+
+# Logs and temp files
+*.log
+/tmp/
