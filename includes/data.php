@@ -37,9 +37,13 @@ function product_status(string $expiry): array
 function get_products(): array
 {
     return [
-        ['item' => 'Vit-C', 'batch' => 'LT-123', 'expiry' => date('Y-m-d', strtotime('-7 days')),  'qty' => 2],
-        ['item' => 'IV Bag', 'batch' => 'LT-371', 'expiry' => date('Y-m-d', strtotime('+3 days')),  'qty' => 10],
-        ['item' => 'Gluta',  'batch' => 'LT-303', 'expiry' => date('Y-m-d', strtotime('+60 days')), 'qty' => 20],
+        ['item' => 'Vitamin C Ampoules', 'batch' => 'LT-123', 'expiry' => date('Y-m-d', strtotime('+6 days')),  'qty' => 67],
+        ['item' => 'B-Complex Injection Vials', 'batch' => 'LT-371', 'expiry' => date('Y-m-d', strtotime('+10 days')),  'qty' => 21],
+        ['item' => 'Methylcobalamin',  'batch' => 'BT-223', 'expiry' => date('Y-m-d', strtotime('+80 days')), 'qty' => 20],
+        ['item' => 'Cyanocobalamin', 'batch' => 'BT-4123', 'expiry' => date('Y-m-d', strtotime('+1 days')),  'qty' => 12],
+        ['item' => 'EDTA Chelation Agent', 'batch' => 'AG-37111', 'expiry' => date('Y-m-d', strtotime('-2 days')),  'qty' => 29],
+        ['item' => 'Zinc Additives',  'batch' => 'AD-30331', 'expiry' => date('Y-m-d', strtotime('+60 days')), 'qty' => 19],
+        ['item' => 'Selenium Additives', 'batch' => 'AD-12123', 'expiry' => date('Y-m-d', strtotime('-7 days')),  'qty' => 10],
     ];
 }
 
