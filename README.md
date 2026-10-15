@@ -23,13 +23,19 @@ dermave-ims/
 ├── login.php            # login page
 ├── logout.php           # ends the session
 ├── dashboard.php        # dashboard page
+├── products.php         # products page (item, batch, expiry, qty, status)
 ├── includes/
 │   ├── config.php       # app + database settings (placeholder)
-│   └── auth.php         # protects pages that need login
+│   ├── auth.php         # protects pages that need login
+│   ├── header.php       # shared top bar + navigation
+│   ├── footer.php       # shared scripts + closing tags
+│   └── data.php         # placeholder product data + expiry status logic
 └── assets/
     ├── css/style.css
+    ├── js/main.js       # shared (nav)
     ├── js/login.js
     ├── js/dashboard.js
+    ├── js/products.js
     └── img/             # put the DermAve logo here
 ```
 
@@ -44,7 +50,7 @@ dermave-ims/
 
 - [x] Login
 - [x] Dashboard
-- [ ] Products
+- [x] Products
 - [ ] Machines
 - [ ] Supplies
 - [ ] Barcode

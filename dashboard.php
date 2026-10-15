@@ -1,6 +1,9 @@
 <?php
-require_once __DIR__ . '/includes/auth.php';
-require_once __DIR__ . '/includes/config.php';
+$pageTitle  = 'Dashboard';
+$activePage = 'dashboard';
+$pageScript = 'dashboard.js';
+
+require_once __DIR__ . '/includes/header.php';
 
 // TODO: replace these placeholder numbers with real counts from the database.
 $stats = [
@@ -13,35 +16,6 @@ $stats = [
     'maintenance_due' => 2,
 ];
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard | DermAve IMS</title>
-  <link rel="stylesheet" href="assets/css/style.css">
-</head>
-<body>
-
-  <header class="topbar">
-    <div class="brand brand--small">
-      <div class="brand__name">DERM<span>AVE</span> IMS</div>
-    </div>
-
-    <!-- TODO: point these links to the real pages once they are built -->
-    <nav class="nav" id="mainNav">
-      <a href="dashboard.php" class="active">Dashboard</a>
-      <a href="#">Products</a>
-      <a href="#">Machines</a>
-      <a href="#">Supplies</a>
-      <a href="#">Barcode</a>
-    </nav>
-
-    <div class="topbar__user">
-      <?= htmlspecialchars($_SESSION['user']) ?>
-      <a href="logout.php">Logout</a>
-    </div>
-  </header>
 
   <main class="content">
     <h1>Dashboard</h1>
@@ -78,6 +52,4 @@ $stats = [
     </section>
   </main>
 
-  <script src="assets/js/dashboard.js"></script>
-</body>
-</html>
+<?php require_once __DIR__ . '/includes/footer.php'; ?>
