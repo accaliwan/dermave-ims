@@ -1,7 +1,7 @@
 <?php
 $pageTitle  = 'Products';
 $activePage = 'products';
-$pageScript = 'products.js';
+$pageScript = 'table-filter.js';
 
 require_once __DIR__ . '/includes/data.php';
 require_once __DIR__ . '/includes/header.php';
@@ -14,7 +14,7 @@ $products = get_products();
     <p class="subtitle">Items, batches and expiry dates &mdash; placeholder data</p>
 
     <div class="toolbar">
-      <input type="search" id="productSearch" placeholder="Search item or batch...">
+      <input type="search" id="tableSearch" placeholder="Search item or batch...">
       <select id="statusFilter" aria-label="Filter by status">
         <option value="all">All statuses</option>
         <option value="expired">Expired</option>
@@ -24,7 +24,7 @@ $products = get_products();
     </div>
 
     <div class="table-wrap">
-      <table class="table" id="productsTable">
+      <table class="table js-filter-table" id="productsTable">
         <thead>
           <tr>
             <th>Item</th>

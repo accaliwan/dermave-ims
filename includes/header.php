@@ -16,8 +16,8 @@ $activePage = $activePage ?? '';
 $navItems = [
     'dashboard' => ['Dashboard', 'dashboard.php'],
     'products'  => ['Products',  'products.php'],
-    'machines'  => ['Machines',  null],
-    'supplies'  => ['Supplies',  null],
+    'machines'  => ['Machines',  'machines.php'],
+    'supplies'  => ['Supplies',  'supplies.php'],
     'barcode'   => ['Barcode',   null],
 ];
 ?>
