@@ -11,11 +11,3 @@
 //     document.getElementById('expired').textContent = data.expired;
 //     document.getElementById('maintenanceDue').textContent = data.maintenance_due;
 //   });
-
-// Placeholder nav links should not jump to the top of the page
-document.querySelectorAll('#mainNav a[href="#"]').forEach((link) => {
-  link.addEventListener('click', (e) => {
-    e.preventDefault();
-    alert('This page is not built yet.');
-  });
-});
