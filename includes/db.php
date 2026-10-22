@@ -2,9 +2,9 @@
 /**
  * DermAve IMS - PDO database connection helper.
  *
- * Returns a PDO instance when the database is reachable,
- * or null when it is not (so the rest of the app can fall back
- * to the in-memory sample data in data.php).
+ * db()       returns a PDO instance when the database is reachable,
+ *            or null when it is not (pages then fall back to sample data).
+ * db_error() returns the reason the last connection attempt failed.
  */
 
 require_once __DIR__ . '/config.php';
@@ -23,16 +23,30 @@ function db(): ?PDO
     $tried = true;
 
     try {
-        $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4';
+        $port = defined('DB_PORT') ? DB_PORT : 3306;
+        $dsn  = 'mysql:host=' . DB_HOST . ';port=' . $port . ';dbname=' . DB_NAME . ';charset=utf8mb4';
         $pdo = new PDO($dsn, DB_USER, DB_PASS, [
             PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES   => false,
         ]);
     } catch (Throwable $e) {
-        // Database not available yet – keep using sample data.
+        // Database not available - remember why so the UI can show it.
+        db_error($e->getMessage());
         $pdo = null;
     }
 
     return $pdo;
+}
+
+/**
+ * Get (or, when $set is given, store) the last connection error message.
+ */
+function db_error(?string $set = null): ?string
+{
+    static $message = null;
+    if ($set !== null) {
+        $message = $set;
+    }
+    return $message;
 }

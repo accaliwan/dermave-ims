@@ -356,3 +356,191 @@ function table_date(?string $d): string
     $ts = $d ? strtotime($d) : false;
     return $ts ? date('M d, Y', $ts) : '—';
 }
+
+/* ------------------------------------------------------------------
+ * Directory writes (Add / Edit / Archive) - need the MySQL database
+ * ----------------------------------------------------------------*/
+
+/**
+ * Which columns each item type actually uses. Anything else is stored as NULL,
+ * so switching an item's type never leaves stray values behind.
+ */
+function directory_type_fields(): array
+{
+    $common = ['name', 'brand', 'category', 'subcategory', 'unit', 'quantity', 'notes'];
+    return [
+        'product' => array_merge($common, ['dosage', 'min_stock', 'price', 'batch_number', 'manufacturing_date', 'expiration_date']),
+        'machine' => array_merge($common, ['last_maintenance', 'next_maintenance']),
+        'supply'  => array_merge($common, ['min_stock', 'price', 'expiration_date']),
+    ];
+}
+
+/**
+ * Check + clean submitted form data.
+ *
+ * @param  array $in      raw input (e.g. $_POST)
+ * @param  array $errors  filled with human-readable messages
+ * @return array          column => value, ready for the database
+ */
+function directory_validate(array $in, array &$errors): array
+{
+    $errors = [];
+    $get = fn(string $k): string => trim((string) ($in[$k] ?? ''));
+
+    $type = $get('item_type');
+    $map  = directory_type_fields();
+    if (!isset($map[$type])) {
+        $errors[] = 'Please choose a type (product, machine or supply).';
+        return [];
+    }
+
+    // text columns: column => [label, max length]
+    $texts = [
+        'name'         => ['Name', 255],
+        'brand'        => ['Brand', 120],
+        'category'     => ['Category', 150],
+        'subcategory'  => ['Subcategory', 150],
+        'dosage'       => ['Dosage', 120],
+        'unit'         => ['Unit', 40],
+        'batch_number' => ['Batch number', 80],
+        'notes'        => ['Notes', 2000],
+    ];
+    $data = ['item_type' => $type];
+
+    foreach ($texts as $col => [$label, $max]) {
+        $v = $get($col);
+        if (mb_strlen($v) > $max) {
+            $errors[] = "$label must be $max characters or less.";
+        }
+        $data[$col] = $v === '' ? null : $v;
+    }
+    if ($data['name'] === null) {
+        $errors[] = 'Name is required.';
+    }
+
+    // whole numbers
+    $q = $get('quantity');
+    if ($q === '') {
+        $data['quantity'] = 0;
+    } elseif (filter_var($q, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0, 'max_range' => 1000000]]) === false) {
+        $errors[] = 'Quantity must be a whole number from 0 to 1,000,000.';
+        $data['quantity'] = 0;
+    } else {
+        $data['quantity'] = (int) $q;
+    }
+
+    $m = $get('min_stock');
+    if ($m === '') {
+        $data['min_stock'] = null;
+    } elseif (filter_var($m, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0, 'max_range' => 1000000]]) === false) {
+        $errors[] = 'Minimum stock must be a whole number from 0 to 1,000,000.';
+        $data['min_stock'] = null;
+    } else {
+        $data['min_stock'] = (int) $m;
+    }
+
+    // price
+    $p = str_replace(',', '', ltrim($get('price'), '₱'));
+    if ($p === '') {
+        $data['price'] = null;
+    } elseif (!is_numeric($p) || (float) $p < 0 || (float) $p > 9999999999.99) {
+        $errors[] = 'Price must be a number of 0 or more.';
+        $data['price'] = null;
+    } else {
+        $data['price'] = number_format((float) $p, 2, '.', '');
+    }
+
+    // dates (YYYY-MM-DD)
+    $dates = [
+        'manufacturing_date' => 'Manufacturing date',
+        'expiration_date'    => 'Expiration date',
+        'last_maintenance'   => 'Last maintenance',
+        'next_maintenance'   => 'Next maintenance',
+    ];
+    foreach ($dates as $col => $label) {
+        $v = $get($col);
+        if ($v === '') {
+            $data[$col] = null;
+            continue;
+        }
+        $d = DateTime::createFromFormat('Y-m-d', $v);
+        if (!$d || $d->format('Y-m-d') !== $v) {
+            $errors[] = "$label is not a valid date.";
+            $data[$col] = null;
+        } else {
+            $data[$col] = $v;
+        }
+    }
+
+    // blank out columns that don't apply to this type
+    $allowed = $map[$type];
+    foreach (['brand', 'category', 'subcategory', 'dosage', 'unit', 'quantity', 'min_stock', 'price',
+              'batch_number', 'manufacturing_date', 'expiration_date', 'last_maintenance',
+              'next_maintenance', 'notes'] as $col) {
+        if (!in_array($col, $allowed, true)) {
+            $data[$col] = null;
+        }
+    }
+
+    if ($data['manufacturing_date'] && $data['expiration_date'] && $data['expiration_date'] <= $data['manufacturing_date']) {
+        $errors[] = 'Expiration date must be after the manufacturing date.';
+    }
+    if ($data['last_maintenance'] && $data['next_maintenance'] && $data['next_maintenance'] < $data['last_maintenance']) {
+        $errors[] = 'Next maintenance cannot be before the last maintenance.';
+    }
+
+    return $data;
+}
+
+/**
+ * Insert a new item ($id = null) or update an existing one.
+ *
+ * @return int|null  the item id, or null if an update targeted a missing item
+ */
+function directory_save(PDO $pdo, array $data, ?int $id = null): ?int
+{
+    $cols = ['item_type', 'name', 'brand', 'category', 'subcategory', 'dosage', 'unit', 'quantity',
+             'min_stock', 'price', 'batch_number', 'manufacturing_date', 'expiration_date',
+             'last_maintenance', 'next_maintenance', 'notes'];
+
+    $params = [];
+    foreach ($cols as $c) {
+        $params[$c] = $data[$c] ?? null;
+    }
+
+    if ($id === null) {
+        $sql = 'INSERT INTO directory_items (' . implode(', ', $cols) . ') VALUES (:' . implode(', :', $cols) . ')';
+        $pdo->prepare($sql)->execute($params);
+        return (int) $pdo->lastInsertId();
+    }
+
+    $exists = $pdo->prepare('SELECT 1 FROM directory_items WHERE id = ?');
+    $exists->execute([$id]);
+    if (!$exists->fetchColumn()) {
+        return null;
+    }
+
+    $set = implode(', ', array_map(fn($c) => "$c = :$c", $cols));
+    $params['id'] = $id;
+    $pdo->prepare("UPDATE directory_items SET $set WHERE id = :id")->execute($params);
+    return $id;
+}
+
+/**
+ * Archive or restore items.
+ *
+ * @param  int[]  $ids
+ * @param  string $status 'archived' | 'active'
+ * @return int    rows changed
+ */
+function directory_set_status(PDO $pdo, array $ids, string $status): int
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', $ids), fn($i) => $i > 0)));
+    if (!$ids || !in_array($status, ['active', 'archived'], true)) {
+        return 0;
+    }
+    $marks = implode(', ', array_fill(0, count($ids), '?'));
+    $stmt  = $pdo->prepare("UPDATE directory_items SET status = ? WHERE id IN ($marks)");
+    $stmt->execute(array_merge([$status], $ids));
+    return $stmt->rowCount();
+}

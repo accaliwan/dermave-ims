@@ -3,7 +3,7 @@
  * - Search
  * - Clickable column headers (sort + filter menus)
  * - Row selection → enable Edit / Archive
- * - Lightweight Add / Edit modal (client-side for demo)
+ * - Add / Edit modal + Archive / Restore, saved to MySQL through directory_api.php
  */
 
 (function () {
@@ -39,6 +39,14 @@
     const n = selectedRows().length;
     btnEdit.disabled = n !== 1;
     btnArchive.disabled = n === 0;
+    // If every selected row is already archived, the button restores them instead
+    btnArchive.textContent = archiveMode() === 'restore' ? 'Restore' : 'Archive';
+  }
+
+  // 'restore' when everything selected is archived, otherwise 'archive'
+  function archiveMode() {
+    const rows = selectedRows();
+    return rows.length && rows.every((r) => r.dataset.status === 'archived') ? 'restore' : 'archive';
   }
 
   function applyAll() {
@@ -163,22 +171,92 @@
     }
   });
 
+  /* ---------- server calls ---------- */
+  const csrf = document.getElementById('f_csrf')?.value || '';
+
+  async function callApi(fields) {
+    const body = new URLSearchParams();
+    body.set('csrf', csrf);
+    for (const [k, v] of Object.entries(fields)) {
+      if (Array.isArray(v)) v.forEach((x) => body.append(k + '[]', x));
+      else body.set(k, v);
+    }
+    let res, json;
+    try {
+      res = await fetch('directory_api.php', { method: 'POST', body });
+      json = await res.json();
+    } catch (err) {
+      return { ok: false, errors: ['Could not reach the server. Is Apache running?'] };
+    }
+    if (!json.ok && !json.errors) json.errors = [json.error || 'Something went wrong.'];
+    return json;
+  }
+
+  // Remember a message across the page reload, then show it
+  function reloadWithMessage(msg) {
+    try { sessionStorage.setItem('dirFlash', msg); } catch (e) {}
+    location.reload();
+  }
+
+  const flash = document.getElementById('flash');
+  try {
+    const msg = sessionStorage.getItem('dirFlash');
+    if (msg && flash) {
+      flash.textContent = msg;
+      flash.hidden = false;
+      sessionStorage.removeItem('dirFlash');
+      setTimeout(() => (flash.hidden = true), 5000);
+    }
+  } catch (e) {}
+
   /* ---------- modal helpers ---------- */
+  const formError = document.getElementById('formError');
+  const btnSave = document.getElementById('btnSave');
+  const typeSelect = document.getElementById('f_item_type');
+  const FIELDS = [
+    'name', 'brand', 'category', 'subcategory', 'dosage', 'quantity', 'unit', 'min_stock',
+    'price', 'batch_number', 'manufacturing_date', 'expiration_date',
+    'last_maintenance', 'next_maintenance', 'notes',
+  ];
+
+  // Show only the fields that apply to the chosen type
+  function syncTypeFields() {
+    const type = typeSelect.value;
+    form.querySelectorAll('[data-for]').forEach((el) => {
+      el.hidden = !el.dataset.for.split(' ').includes(type);
+    });
+  }
+  typeSelect?.addEventListener('change', syncTypeFields);
+
+  function showFormErrors(list) {
+    formError.innerHTML = '';
+    list.forEach((m) => {
+      const d = document.createElement('div');
+      d.textContent = m;
+      formError.appendChild(d);
+    });
+    formError.hidden = list.length === 0;
+  }
+
   function openModal(mode, row) {
     modal.hidden = false;
     modalTitle.textContent = mode === 'edit' ? 'Edit item' : 'Add item';
     form.reset();
+    showFormErrors([]);
     document.getElementById('f_id').value = '';
 
     if (mode === 'edit' && row) {
-      document.getElementById('f_id').value = row.dataset.id || '';
-      document.getElementById('f_item_type').value = row.dataset.item_type || 'product';
-      document.getElementById('f_name').value = row.dataset.name || '';
-      document.getElementById('f_category').value = row.dataset.category || '';
-      document.getElementById('f_dosage').value = row.dataset.dosage || '';
-      document.getElementById('f_quantity').value = row.dataset.quantity || '0';
-      // unit / dates not fully stored in data-* for brevity; left blank or extend as needed
+      let item = {};
+      try { item = JSON.parse(row.dataset.item || '{}'); } catch (e) {}
+      document.getElementById('f_id').value = item.id || row.dataset.id || '';
+      typeSelect.value = item.item_type || 'product';
+      FIELDS.forEach((f) => {
+        const el = document.getElementById('f_' + f);
+        if (el) el.value = item[f] ?? '';
+      });
     }
+    syncTypeFields();
+    document.getElementById('f_name').focus();
   }
 
   function closeModal() {
@@ -188,6 +266,9 @@
   modal?.querySelectorAll('[data-close]').forEach((el) => {
     el.addEventListener('click', closeModal);
   });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal && !modal.hidden) closeModal();
+  });
 
   btnAdd?.addEventListener('click', () => openModal('add'));
 
@@ -196,31 +277,42 @@
     if (rows.length === 1) openModal('edit', rows[0]);
   });
 
-  btnArchive?.addEventListener('click', () => {
+  /* ---------- archive / restore ---------- */
+  btnArchive?.addEventListener('click', async () => {
     const rows = selectedRows();
     if (!rows.length) return;
-    if (!confirm(`Archive ${rows.length} selected item(s)?`)) return;
 
-    rows.forEach((row) => {
-      // Client-side demo: mark as archived
-      row.dataset.status = 'archived';
-      const badge = row.querySelector('.badge');
-      if (badge) {
-        badge.textContent = 'Archived';
-        badge.className = 'badge badge--expired';
-      }
-      row.querySelector('.row-check').checked = false;
-    });
-    checkAll.checked = false;
-    applyAll();
-    // TODO: POST to a PHP endpoint that sets status = 'archived' in directory_items
+    const mode = archiveMode();
+    const targets = rows.filter((r) => (mode === 'restore') === (r.dataset.status === 'archived'));
+    const verb = mode === 'restore' ? 'Restore' : 'Archive';
+    if (!confirm(`${verb} ${targets.length} selected item(s)?`)) return;
+
+    btnArchive.disabled = true;
+    const res = await callApi({ action: mode, ids: targets.map((r) => r.dataset.id) });
+    if (res.ok) {
+      reloadWithMessage(res.message);
+    } else {
+      alert(res.errors.join('\n'));
+      updateActionButtons();
+    }
   });
 
-  form?.addEventListener('submit', (e) => {
+  /* ---------- save (add / edit) ---------- */
+  form?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    // Demo only – in production POST to save endpoint then reload
-    alert('Form ready. Connect this submit handler to a PHP API that writes to directory_items.');
-    closeModal();
+    showFormErrors([]);
+    btnSave.disabled = true;
+
+    const fields = Object.fromEntries(new FormData(form).entries());
+    fields.action = 'save';
+    const res = await callApi(fields);
+
+    btnSave.disabled = false;
+    if (res.ok) {
+      reloadWithMessage(res.message);
+    } else {
+      showFormErrors(res.errors);
+    }
   });
 
   // initial

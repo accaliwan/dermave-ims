@@ -239,7 +239,7 @@ a:hover {
   width: 100%;
   max-width: none;
   margin: 0 auto;
-  padding: 28px 64px;
+  padding: 28px 16px;
 }
 .content h1 {
   font-size: 1.5rem;
@@ -787,5 +787,67 @@ a:hover {
   .table th {
     font-size: 0.62rem;
     letter-spacing: 0.4px;
+  }
+}
+
+/* ==========================================================
+   DIRECTORY: add / edit modal, flash message, archived rows
+   ========================================================== */
+.alert--success {
+  background: rgba(255, 224, 102, 0.1);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.alert code {
+  color: var(--white);
+}
+
+.modal__card--wide {
+  max-width: 680px;
+}
+.modal__card [hidden] {
+  display: none !important;
+}
+.modal__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 16px;
+}
+.modal__full {
+  grid-column: 1 / -1;
+}
+.modal__card textarea {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  background: var(--black);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--white);
+  font: inherit;
+  resize: vertical;
+}
+.modal__card textarea:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+.modal__card input[type="date"] {
+  color-scheme: dark;
+}
+.modal__card #formError div + div {
+  margin-top: 4px;
+}
+
+.table tbody tr[data-status="archived"] td {
+  opacity: 0.5;
+}
+.table tbody tr[data-status="archived"] td.col-check {
+  opacity: 1;
+}
+
+@media (max-width: 560px) {
+  .modal__grid {
+    grid-template-columns: 1fr;
   }
 }
