@@ -18,7 +18,7 @@ $navItems = [
     'products'  => ['Products',  'products.php'],
     'machines'  => ['Machines',  'machines.php'],
     'supplies'  => ['Supplies',  'supplies.php'],
-    'barcode'   => ['Barcode',   null],
+    'barcode'   => ['Barcode',   'barcode.php'],
 ];
 ?>
 <!DOCTYPE html>
