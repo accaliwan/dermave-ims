@@ -1,18 +1,21 @@
 <?php
 /**
- * DermAve IMS - placeholder product data + expiry status logic.
+ * DermAve IMS - data layer.
  *
- * TODO: replace get_products() with a MySQL query once the database is ready.
- *       product_status() can stay as it is.
+ * Prefers the MySQL `directory_items` table (via db.php).
+ * Falls back to in-memory sample rows that mirror the SQL seed
+ * so the UI works even before phpMyAdmin is set up.
  */
 
+require_once __DIR__ . '/db.php';
+
+/* ------------------------------------------------------------------
+ * Status helpers (unchanged logic, used by product/machine pages)
+ * ----------------------------------------------------------------*/
+
 /**
- * Work out a product's status from its expiry date.
- *
+ * Product status from expiry date.
  * @return array [css class, label, days left]
- *   expired -> already past its expiry date
- *   soon    -> expires within 30 days (label shows the days left)
- *   ok      -> more than 30 days left
  */
 function product_status(string $expiry): array
 {
@@ -31,26 +34,7 @@ function product_status(string $expiry): array
 }
 
 /**
- * Placeholder rows based on the Products page sketch.
- * Expiry dates are relative to today so every status can be seen in the demo.
- */
-function get_products(): array
-{
-    return [
-        ['item' => 'Vitamin C Ampoules', 'batch' => 'LT-123', 'expiry' => date('Y-m-d', strtotime('+6 days')),  'qty' => 67],
-        ['item' => 'B-Complex Injection Vials', 'batch' => 'LT-371', 'expiry' => date('Y-m-d', strtotime('+10 days')),  'qty' => 21],
-        ['item' => 'Methylcobalamin',  'batch' => 'BT-223', 'expiry' => date('Y-m-d', strtotime('+80 days')), 'qty' => 20],
-        ['item' => 'Cyanocobalamin', 'batch' => 'BT-4123', 'expiry' => date('Y-m-d', strtotime('+1 days')),  'qty' => 12],
-        ['item' => 'EDTA Chelation Agent', 'batch' => 'AG-37111', 'expiry' => date('Y-m-d', strtotime('-2 days')),  'qty' => 29],
-        ['item' => 'Zinc Additives',  'batch' => 'AD-30331', 'expiry' => date('Y-m-d', strtotime('+60 days')), 'qty' => 19],
-        ['item' => 'Selenium Additives', 'batch' => 'AD-12123', 'expiry' => date('Y-m-d', strtotime('-7 days')),  'qty' => 10],
-    ];
-}
-
-/**
- * Machine maintenance status. Same rules as product_status(), but a past
- * date is "Overdue" instead of "Expired".
- *
+ * Machine maintenance status.
  * @return array [css class, label, days left]
  */
 function machine_status(string $date): array
@@ -60,22 +44,8 @@ function machine_status(string $date): array
 }
 
 /**
- * Placeholder rows based on the Machines page sketch.
- * 'date' is the next maintenance date, relative to today for the demo.
- */
-function get_machines(): array
-{
-    return [
-        ['name' => 'LED Face Mask',          'date' => date('Y-m-d', strtotime('+3 days'))],
-        ['name' => 'Plasma Fibroblast Pen',  'date' => date('Y-m-d', strtotime('-14 days'))],
-        ['name' => 'Diode Laser',            'date' => date('Y-m-d', strtotime('+45 days'))],
-    ];
-}
-
-/**
- * Stock level for a supply.
- *
- * @return string 'out' (0 left), 'low' (at or below the minimum) or 'ok'
+ * Supply stock level.
+ * @return string 'out' | 'low' | 'ok'
  */
 function supply_status(int $stock, int $min): string
 {
@@ -85,17 +55,304 @@ function supply_status(int $stock, int $min): string
     return $stock <= $min ? 'low' : 'ok';
 }
 
+/* ------------------------------------------------------------------
+ * Sample data (matches sql/directory_schema.sql)
+ * ----------------------------------------------------------------*/
+
+function _sample_directory_items(): array
+{
+    $today = new DateTimeImmutable('today');
+
+    return [
+        // Machines
+        [
+            'id' => 1, 'item_type' => 'machine', 'name' => 'Dermaplaning Handpiece',
+            'brand' => null, 'category' => 'Machines', 'subcategory' => 'Facial / Skin',
+            'description' => 'Handheld dermaplaning device', 'dosage' => null, 'unit' => 'unit',
+            'quantity' => 1, 'min_stock' => null, 'price' => null, 'batch_number' => null,
+            'manufacturing_date' => null, 'expiration_date' => null,
+            'last_maintenance' => $today->modify('-20 days')->format('Y-m-d'),
+            'next_maintenance' => $today->modify('+40 days')->format('Y-m-d'),
+            'status' => 'active', 'notes' => 'Routine blade/head check',
+        ],
+        [
+            'id' => 2, 'item_type' => 'machine', 'name' => 'Plasma Fibroblast Pen',
+            'brand' => null, 'category' => 'Machines', 'subcategory' => 'Facial / Skin',
+            'description' => 'Plasma fibroblast treatment pen', 'dosage' => null, 'unit' => 'unit',
+            'quantity' => 1, 'min_stock' => null, 'price' => null, 'batch_number' => null,
+            'manufacturing_date' => null, 'expiration_date' => null,
+            'last_maintenance' => $today->modify('-45 days')->format('Y-m-d'),
+            'next_maintenance' => $today->modify('-10 days')->format('Y-m-d'),
+            'status' => 'active', 'notes' => 'Overdue for tip inspection',
+        ],
+        [
+            'id' => 3, 'item_type' => 'machine', 'name' => 'LED Face Mask / Dome',
+            'brand' => null, 'category' => 'Machines', 'subcategory' => 'Facial / Light Therapy',
+            'description' => 'LED face mask or dome unit', 'dosage' => null, 'unit' => 'unit',
+            'quantity' => 2, 'min_stock' => null, 'price' => null, 'batch_number' => null,
+            'manufacturing_date' => null, 'expiration_date' => null,
+            'last_maintenance' => $today->modify('-10 days')->format('Y-m-d'),
+            'next_maintenance' => $today->modify('+50 days')->format('Y-m-d'),
+            'status' => 'active', 'notes' => null,
+        ],
+        [
+            'id' => 4, 'item_type' => 'machine', 'name' => 'HydraFacial Machine',
+            'brand' => null, 'category' => 'Skin Care & Facial Treatments', 'subcategory' => 'Facial Machines',
+            'description' => 'HydraFacial treatment system', 'dosage' => null, 'unit' => 'unit',
+            'quantity' => 1, 'min_stock' => null, 'price' => null, 'batch_number' => null,
+            'manufacturing_date' => null, 'expiration_date' => null,
+            'last_maintenance' => $today->modify('-5 days')->format('Y-m-d'),
+            'next_maintenance' => $today->modify('+25 days')->format('Y-m-d'),
+            'status' => 'active', 'notes' => null,
+        ],
+        [
+            'id' => 5, 'item_type' => 'machine', 'name' => 'Cryolipolysis / CoolSculpting Machine',
+            'brand' => null, 'category' => 'Body Contouring & Fat Reduction', 'subcategory' => 'Fat Reduction',
+            'description' => 'Cryolipolysis body contouring device', 'dosage' => null, 'unit' => 'unit',
+            'quantity' => 1, 'min_stock' => null, 'price' => null, 'batch_number' => null,
+            'manufacturing_date' => null, 'expiration_date' => null,
+            'last_maintenance' => $today->modify('-30 days')->format('Y-m-d'),
+            'next_maintenance' => $today->modify('+60 days')->format('Y-m-d'),
+            'status' => 'active', 'notes' => 'Applicator seals checked',
+        ],
+
+        // Products
+        [
+            'id' => 6, 'item_type' => 'product', 'name' => 'Glutathione Vials',
+            'brand' => null, 'category' => 'IV Drip & Injection Consumables', 'subcategory' => 'Vitamins / Injectables',
+            'description' => 'Glutathione for IV push/drip (verify indication & authorization)',
+            'dosage' => '600 mg', 'unit' => 'vial', 'quantity' => 24, 'min_stock' => 10, 'price' => 450.00,
+            'batch_number' => 'GLU-2401',
+            'manufacturing_date' => $today->modify('-90 days')->format('Y-m-d'),
+            'expiration_date' => $today->modify('+180 days')->format('Y-m-d'),
+            'last_maintenance' => null, 'next_maintenance' => null,
+            'status' => 'active', 'notes' => 'Also available 1.2 g / 5 g / 8 g',
+        ],
+        [
+            'id' => 7, 'item_type' => 'product', 'name' => 'Vitamin C (Ascorbic Acid) Ampoules',
+            'brand' => null, 'category' => 'IV Drip & Injection Consumables', 'subcategory' => 'Vitamins / Injectables',
+            'description' => 'Ascorbic acid for IV / mesotherapy / topical',
+            'dosage' => '500 mg', 'unit' => 'ampoule', 'quantity' => 40, 'min_stock' => 15, 'price' => 85.00,
+            'batch_number' => 'VTC-118',
+            'manufacturing_date' => $today->modify('-60 days')->format('Y-m-d'),
+            'expiration_date' => $today->modify('+120 days')->format('Y-m-d'),
+            'last_maintenance' => null, 'next_maintenance' => null,
+            'status' => 'active', 'notes' => 'Also 3 g strength',
+        ],
+        [
+            'id' => 8, 'item_type' => 'product', 'name' => 'Normal Saline (0.9% NaCl)',
+            'brand' => null, 'category' => 'IV Drip & Injection Consumables', 'subcategory' => 'IV Fluids and Solutions',
+            'description' => '0.9% sodium chloride IV solution',
+            'dosage' => '500 mL', 'unit' => 'bag', 'quantity' => 30, 'min_stock' => 12, 'price' => 35.00,
+            'batch_number' => 'NS-500-092',
+            'manufacturing_date' => $today->modify('-30 days')->format('Y-m-d'),
+            'expiration_date' => $today->modify('+365 days')->format('Y-m-d'),
+            'last_maintenance' => null, 'next_maintenance' => null,
+            'status' => 'active', 'notes' => 'Also 100/250/1000 mL',
+        ],
+        [
+            'id' => 9, 'item_type' => 'product', 'name' => 'Hyaluronic Acid (Skin Booster / Filler)',
+            'brand' => null, 'category' => 'Topical & Procedural Consumables', 'subcategory' => 'Injectable / Skin Rejuvenation',
+            'description' => 'HA for filler or skin booster / mesotherapy',
+            'dosage' => '~20 mg/mL', 'unit' => 'syringe 1 mL', 'quantity' => 18, 'min_stock' => 5, 'price' => 2200.00,
+            'batch_number' => 'HA-1ML-07',
+            'manufacturing_date' => $today->modify('-45 days')->format('Y-m-d'),
+            'expiration_date' => $today->modify('+300 days')->format('Y-m-d'),
+            'last_maintenance' => null, 'next_maintenance' => null,
+            'status' => 'active', 'notes' => '0.5 / 1 / 2 mL sizes',
+        ],
+        [
+            'id' => 10, 'item_type' => 'product', 'name' => 'Botulinum Toxin Vials',
+            'brand' => null, 'category' => 'Topical & Procedural Consumables', 'subcategory' => 'Injectable / Skin Rejuvenation',
+            'description' => 'Botulinum toxin (requires appropriate licensing)',
+            'dosage' => '100 units', 'unit' => 'vial', 'quantity' => 8, 'min_stock' => 3, 'price' => 8500.00,
+            'batch_number' => 'BTX-100-03',
+            'manufacturing_date' => $today->modify('-20 days')->format('Y-m-d'),
+            'expiration_date' => $today->modify('+90 days')->format('Y-m-d'),
+            'last_maintenance' => null, 'next_maintenance' => null,
+            'status' => 'active', 'notes' => 'Also 50 / 200 unit vials',
+        ],
+
+        // Supplies
+        [
+            'id' => 11, 'item_type' => 'supply', 'name' => 'Syringes (Assorted Sizes)',
+            'brand' => null, 'category' => 'IV Administration Equipment', 'subcategory' => 'IV Admin Supplies',
+            'description' => 'Disposable sterile syringes – specify sizes on order',
+            'dosage' => null, 'unit' => 'pcs', 'quantity' => 120, 'min_stock' => 40, 'price' => 8.50,
+            'batch_number' => null, 'manufacturing_date' => null, 'expiration_date' => null,
+            'last_maintenance' => null, 'next_maintenance' => null,
+            'status' => 'active', 'notes' => 'Common sizes 1 mL / 3 mL / 5 mL / 10 mL',
+        ],
+        [
+            'id' => 12, 'item_type' => 'supply', 'name' => 'Sterile Needles (Assorted Sizes)',
+            'brand' => null, 'category' => 'IV Administration Equipment', 'subcategory' => 'IV Admin Supplies',
+            'description' => 'Disposable sterile needles – specify gauges/lengths',
+            'dosage' => null, 'unit' => 'pcs', 'quantity' => 200, 'min_stock' => 50, 'price' => 3.25,
+            'batch_number' => null, 'manufacturing_date' => null, 'expiration_date' => null,
+            'last_maintenance' => null, 'next_maintenance' => null,
+            'status' => 'active', 'notes' => null,
+        ],
+        [
+            'id' => 13, 'item_type' => 'supply', 'name' => 'Alcohol Swabs',
+            'brand' => null, 'category' => 'IV Administration Equipment', 'subcategory' => 'IV Admin Supplies',
+            'description' => 'Single-use alcohol prep pads',
+            'dosage' => null, 'unit' => 'box', 'quantity' => 25, 'min_stock' => 10, 'price' => 45.00,
+            'batch_number' => null, 'manufacturing_date' => null, 'expiration_date' => null,
+            'last_maintenance' => null, 'next_maintenance' => null,
+            'status' => 'active', 'notes' => null,
+        ],
+        [
+            'id' => 14, 'item_type' => 'supply', 'name' => 'IV Bags (empty / administration sets related)',
+            'brand' => null, 'category' => 'IV Administration Equipment', 'subcategory' => 'IV Admin Supplies',
+            'description' => 'IV administration bags / related consumables',
+            'dosage' => null, 'unit' => 'pcs', 'quantity' => 40, 'min_stock' => 15, 'price' => 28.00,
+            'batch_number' => null, 'manufacturing_date' => null, 'expiration_date' => null,
+            'last_maintenance' => null, 'next_maintenance' => null,
+            'status' => 'active', 'notes' => 'Distinct from pre-filled fluid bags',
+        ],
+        [
+            'id' => 15, 'item_type' => 'supply', 'name' => 'Numbing Cream (Lidocaine 5%)',
+            'brand' => null, 'category' => 'Anesthetics and Topical Preparations', 'subcategory' => 'Topical Anesthetics',
+            'description' => 'Topical lidocaine cream 4–5%',
+            'dosage' => null, 'unit' => 'tube', 'quantity' => 12, 'min_stock' => 4, 'price' => 180.00,
+            'batch_number' => null, 'manufacturing_date' => null, 'expiration_date' => null,
+            'last_maintenance' => null, 'next_maintenance' => null,
+            'status' => 'active', 'notes' => 'Also gel and EMLA available',
+        ],
+    ];
+}
+
+/* ------------------------------------------------------------------
+ * Directory API
+ * ----------------------------------------------------------------*/
+
 /**
- * Placeholder rows based on the Supplies page sketch.
- * 'min' is the minimum level before an item counts as low stock.
+ * Fetch all directory items (or filtered).
+ *
+ * @param array $opts  Optional: item_type, status, include_archived (bool)
+ * @return array
  */
+function get_directory_items(array $opts = []): array
+{
+    $type            = $opts['item_type'] ?? null;
+    $status          = $opts['status'] ?? null;
+    $includeArchived = !empty($opts['include_archived']);
+
+    $pdo = db();
+    if ($pdo) {
+        $sql    = 'SELECT * FROM directory_items WHERE 1=1';
+        $params = [];
+
+        if ($type) {
+            $sql .= ' AND item_type = ?';
+            $params[] = $type;
+        }
+        if ($status) {
+            $sql .= ' AND status = ?';
+            $params[] = $status;
+        } elseif (!$includeArchived) {
+            $sql .= " AND status = 'active'";
+        }
+
+        $sql .= ' ORDER BY item_type, name';
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
+    // Fallback sample data
+    $rows = _sample_directory_items();
+    if ($type) {
+        $rows = array_values(array_filter($rows, fn($r) => $r['item_type'] === $type));
+    }
+    if ($status) {
+        $rows = array_values(array_filter($rows, fn($r) => $r['status'] === $status));
+    } elseif (!$includeArchived) {
+        $rows = array_values(array_filter($rows, fn($r) => $r['status'] === 'active'));
+    }
+    return $rows;
+}
+
+/**
+ * Distinct values for a column (used by clickable header filters).
+ */
+function get_directory_distinct(string $column): array
+{
+    $allowed = ['item_type', 'category', 'subcategory', 'brand', 'unit', 'status'];
+    if (!in_array($column, $allowed, true)) {
+        return [];
+    }
+
+    $pdo = db();
+    if ($pdo) {
+        $stmt = $pdo->query("SELECT DISTINCT `$column` AS val FROM directory_items WHERE `$column` IS NOT NULL AND `$column` != '' ORDER BY val");
+        return array_column($stmt->fetchAll(), 'val');
+    }
+
+    $vals = [];
+    foreach (_sample_directory_items() as $row) {
+        if (!empty($row[$column])) {
+            $vals[$row[$column]] = true;
+        }
+    }
+    $list = array_keys($vals);
+    sort($list);
+    return $list;
+}
+
+/* ------------------------------------------------------------------
+ * Backward-compatible getters for the existing pages
+ * ----------------------------------------------------------------*/
+
+function get_products(): array
+{
+    $items = get_directory_items(['item_type' => 'product']);
+    return array_map(function ($r) {
+        return [
+            'item'   => $r['name'],
+            'type'   => $r['subcategory'] ?: ($r['category'] ?? ''),
+            'brand'  => $r['brand'] ?? '',
+            'dosage' => $r['dosage'] ?? '',
+            'mfg'    => $r['manufacturing_date'] ?? '',
+            'batch'  => $r['batch_number'] ?? '',
+            'expiry' => $r['expiration_date'] ?? date('Y-m-d', strtotime('+1 year')),
+            'price'  => $r['price'] !== null ? (float) $r['price'] : null,
+            'qty'    => (int) $r['quantity'],
+        ];
+    }, $items);
+}
+
+function get_machines(): array
+{
+    $items = get_directory_items(['item_type' => 'machine']);
+    return array_map(function ($r) {
+        return [
+            'name' => $r['name'],
+            'last' => $r['last_maintenance'] ?? '',
+            'date' => $r['next_maintenance'] ?? date('Y-m-d', strtotime('+30 days')),
+        ];
+    }, $items);
+}
+
 function get_supplies(): array
 {
-    return [
-        ['item' => 'Hand Sanitizer',    'stock' => 5,  'unit' => 'pcs',   'min' => 10],
-        ['item' => 'Face Masks',        'stock' => 3,  'unit' => 'packs', 'min' => 5],
-        ['item' => 'Disposable Gloves', 'stock' => 0,  'unit' => 'boxes', 'min' => 5],
-        ['item' => 'Cotton Pads',       'stock' => 40, 'unit' => 'packs', 'min' => 10],
-        ['item' => 'Alcohol Swabs',     'stock' => 25, 'unit' => 'boxes', 'min' => 10],
-    ];
+    $items = get_directory_items(['item_type' => 'supply']);
+    return array_map(function ($r) {
+        return [
+            'item'  => $r['name'],
+            'type'  => $r['subcategory'] ?: ($r['category'] ?? ''),
+            'stock' => (int) $r['quantity'],
+            'unit'  => $r['unit'] ?? 'pcs',
+            'min'   => (int) ($r['min_stock'] ?? 0),
+        ];
+    }, $items);
+}
+
+/**
+ * Format a date for the tables, or an em dash when empty.
+ */
+function table_date(?string $d): string
+{
+    $ts = $d ? strtotime($d) : false;
+    return $ts ? date('M d, Y', $ts) : '—';
 }
