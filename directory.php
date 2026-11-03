@@ -2,7 +2,8 @@
 /**
  * DermAve IMS - Directory page
  * Unified view of products, machines and supplies.
- * Column headers are clickable for sort / filter options.
+ * Buttons above the table switch between the three item types;
+ * each type shows its own set of columns.
  */
 
 $pageTitle  = 'Directory';
@@ -24,9 +25,7 @@ if (empty($_SESSION['csrf'])) {
 }
 
 // Distinct values for filter menus (from live data or sample)
-$typeOptions     = get_directory_distinct('item_type');
 $categoryOptions = get_directory_distinct('category');
-$statusOptions   = get_directory_distinct('status');
 
 // Helper to format dates safely
 function fmt_date(?string $d): string
@@ -60,27 +59,25 @@ function fmt_date(?string $d): string
       </div>
     </div>
 
+    <!-- Item type switch -->
+    <div class="type-tabs" id="typeTabs" role="group" aria-label="Item type">
+      <button type="button" class="btn btn--ghost type-tab is-active" data-type="product" aria-pressed="true">Product</button>
+      <button type="button" class="btn btn--ghost type-tab" data-type="machine" aria-pressed="false">Machine</button>
+      <button type="button" class="btn btn--ghost type-tab" data-type="supply" aria-pressed="false">Supply</button>
+    </div>
+
     <div class="table-wrap">
-      <table class="table table--fit js-directory-table" id="directoryTable">
+      <!--
+        Column rules (hidden with CSS based on data-view):
+          product : Item Name, Category, Dosage, Qty, Expiration Date, Status
+          supply  : Item Name, Category, Qty, Status
+          machine : Machine Name, Category, Status
+      -->
+      <table class="table table--fit js-directory-table" id="directoryTable" data-view="product">
         <thead>
           <tr>
-            <th class="col-check"><input type="checkbox" id="checkAll" title="Select all visible"></th>
-            <th class="sortable filterable" data-col="item_type" data-type="enum">
-              Type <span class="th-icon">▾</span>
-              <div class="th-menu" hidden>
-                <button type="button" data-action="sort-asc">Sort A → Z</button>
-                <button type="button" data-action="sort-desc">Sort Z → A</button>
-                <hr>
-                <button type="button" data-action="filter-all" class="active">All types</button>
-                <?php foreach ($typeOptions as $opt): ?>
-                  <button type="button" data-action="filter" data-value="<?= htmlspecialchars($opt) ?>">
-                    <?= htmlspecialchars(ucfirst($opt)) ?>
-                  </button>
-                <?php endforeach; ?>
-              </div>
-            </th>
             <th class="sortable filterable" data-col="name" data-type="text">
-              Item Name <span class="th-icon">▾</span>
+              <span id="nameLabel">Item Name</span> <span class="th-icon">▾</span>
               <div class="th-menu" hidden>
                 <button type="button" data-action="sort-asc">Sort A → Z</button>
                 <button type="button" data-action="sort-desc">Sort Z → A</button>
@@ -100,22 +97,16 @@ function fmt_date(?string $d): string
                 <?php endforeach; ?>
               </div>
             </th>
-            <th class="sortable" data-col="dosage" data-type="text">
-              Dosage / Spec <span class="th-icon">▾</span>
-              <div class="th-menu" hidden>
-                <button type="button" data-action="sort-asc">Sort A → Z</button>
-                <button type="button" data-action="sort-desc">Sort Z → A</button>
-              </div>
-            </th>
-            <th class="sortable num" data-col="quantity" data-type="number">
+            <th class="c-dosage">Dosage</th>
+            <th class="sortable c-qty" data-col="quantity" data-type="number">
               Qty <span class="th-icon">▾</span>
               <div class="th-menu" hidden>
                 <button type="button" data-action="sort-asc">Sort low → high</button>
                 <button type="button" data-action="sort-desc">Sort high → low</button>
               </div>
             </th>
-            <th class="sortable" data-col="date_key" data-type="date">
-              Date <span class="th-icon">▾</span>
+            <th class="sortable c-exp" data-col="date_key" data-type="date">
+              Expiration Date <span class="th-icon">▾</span>
               <div class="th-menu" hidden>
                 <button type="button" data-action="sort-asc">Soonest first</button>
                 <button type="button" data-action="sort-desc">Latest first</button>
@@ -128,11 +119,8 @@ function fmt_date(?string $d): string
                 <button type="button" data-action="sort-desc">Sort Z → A</button>
                 <hr>
                 <button type="button" data-action="filter-all" class="active">All statuses</button>
-                <?php foreach ($statusOptions as $opt): ?>
-                  <button type="button" data-action="filter" data-value="<?= htmlspecialchars($opt) ?>">
-                    <?= htmlspecialchars(ucfirst($opt)) ?>
-                  </button>
-                <?php endforeach; ?>
+                <button type="button" data-action="filter" data-value="active">Active</button>
+                <button type="button" data-action="filter" data-value="archived">Archived</button>
               </div>
             </th>
           </tr>
@@ -140,12 +128,9 @@ function fmt_date(?string $d): string
         <tbody>
           <?php foreach ($items as $row): ?>
             <?php
-              // Prefer expiry for products, next maintenance for machines
-              $dateKey = $row['expiration_date'] ?: $row['next_maintenance'] ?: '';
-              $dateLabel = $row['expiration_date']
-                ? 'Exp ' . fmt_date($row['expiration_date'])
-                : ($row['next_maintenance'] ? 'Maint ' . fmt_date($row['next_maintenance']) : '—');
-              $qtyLabel = (int) $row['quantity'] . ($row['unit'] ? ' ' . $row['unit'] : '');
+              // Only products show an expiration date column
+              $dateKey  = $row['item_type'] === 'product' ? ($row['expiration_date'] ?: '') : '';
+              $qtyUnit  = $row['unit'] ? ' ' . $row['unit'] : '';
             ?>
             <tr
               data-id="<?= (int) $row['id'] ?>"
@@ -158,18 +143,11 @@ function fmt_date(?string $d): string
               data-status="<?= htmlspecialchars($row['status']) ?>"
               data-item="<?= htmlspecialchars(json_encode($row, JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR), ENT_QUOTES) ?>"
             >
-              <td class="col-check"><input type="checkbox" class="row-check"></td>
-              <td><span class="type-pill type-pill--<?= htmlspecialchars($row['item_type']) ?>"><?= htmlspecialchars(ucfirst($row['item_type'])) ?></span></td>
-              <td>
-                <strong><?= htmlspecialchars($row['name']) ?></strong>
-                <?php if (!empty($row['batch_number'])): ?>
-                  <div class="muted small">Batch <?= htmlspecialchars($row['batch_number']) ?></div>
-                <?php endif; ?>
-              </td>
+              <td><strong><?= htmlspecialchars($row['name']) ?></strong></td>
               <td><?= htmlspecialchars($row['category'] ?? '—') ?></td>
-              <td><?= htmlspecialchars($row['dosage'] ?? '—') ?></td>
-              <td class="num"><?= htmlspecialchars($qtyLabel) ?></td>
-              <td><?= htmlspecialchars($dateLabel) ?></td>
+              <td class="c-dosage"><?= htmlspecialchars($row['dosage'] ?? '—') ?></td>
+              <td class="c-qty"><span class="qty-num"><?= (int) $row['quantity'] ?></span><?= htmlspecialchars($qtyUnit) ?></td>
+              <td class="c-exp"><?= htmlspecialchars(fmt_date($row['expiration_date'] ?? null)) ?></td>
               <td><span class="badge badge--<?= $row['status'] === 'archived' ? 'expired' : 'ok' ?>"><?= htmlspecialchars(ucfirst($row['status'])) ?></span></td>
             </tr>
           <?php endforeach; ?>
