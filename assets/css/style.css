@@ -851,3 +851,49 @@ a:hover {
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================================
+   DIRECTORY: Product / Machine / Supply buttons, per-type
+   columns, and click-to-select rows
+   ========================================================== */
+.type-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.type-tabs .type-tab {
+  min-width: 110px;
+  text-align: center;
+}
+.type-tabs .type-tab.is-active {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--black);
+}
+
+/* Columns that only some types use (the table's data-view is set by directory.js) */
+.js-directory-table[data-view="supply"] .c-dosage,
+.js-directory-table[data-view="supply"] .c-exp,
+.js-directory-table[data-view="machine"] .c-dosage,
+.js-directory-table[data-view="machine"] .c-exp,
+.js-directory-table[data-view="machine"] .c-qty {
+  display: none;
+}
+
+/* Rows are clickable now that the checkbox column is gone */
+.js-directory-table tbody tr {
+  cursor: pointer;
+}
+.table tbody tr.is-selected {
+  background: rgba(255, 224, 102, 0.12);
+}
+.table tbody tr.is-selected td:first-child {
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+
+/* Quantity: number is bold and 2px bigger; the unit (vial, bag, pcs) stays normal */
+.qty-num {
+  font-weight: 700;
+  font-size: calc(1em + 2px);
+}

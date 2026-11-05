@@ -1,8 +1,9 @@
 /**
  * DermAve IMS - Directory page behaviour
+ * - Product / Machine / Supply buttons (each shows its own columns)
  * - Search
  * - Clickable column headers (sort + filter menus)
- * - Row selection → enable Edit / Archive
+ * - Click a row to select it (Ctrl/Cmd + click to select several) → enables Edit / Archive
  * - Add / Edit modal + Archive / Restore, saved to MySQL through directory_api.php
  */
 
@@ -13,13 +14,24 @@
   const tbody = table.querySelector('tbody');
   const searchInput = document.getElementById('tableSearch');
   const noResults = document.getElementById('noResults');
-  const checkAll = document.getElementById('checkAll');
   const btnEdit = document.getElementById('btnEdit');
   const btnArchive = document.getElementById('btnArchive');
   const btnAdd = document.getElementById('btnAdd');
   const modal = document.getElementById('itemModal');
   const form = document.getElementById('itemForm');
   const modalTitle = document.getElementById('modalTitle');
+  const typeTabs = document.querySelectorAll('#typeTabs [data-type]');
+  const nameLabel = document.getElementById('nameLabel');
+
+  const TYPES = ['product', 'machine', 'supply'];
+  const NAME_LABELS = { product: 'Item Name', machine: 'Machine Name', supply: 'Item Name' };
+
+  // Which type is showing (remembered across the page reload after a save)
+  let currentType = 'product';
+  try {
+    const saved = sessionStorage.getItem('dirType');
+    if (TYPES.includes(saved)) currentType = saved;
+  } catch (e) {}
 
   // Active filters: { colName: value | null }
   const filters = {};
@@ -32,7 +44,11 @@
   }
 
   function selectedRows() {
-    return visibleRows().filter((r) => r.querySelector('.row-check')?.checked);
+    return visibleRows().filter((r) => r.classList.contains('is-selected'));
+  }
+
+  function clearSelection() {
+    tbody.querySelectorAll('tr.is-selected').forEach((r) => r.classList.remove('is-selected'));
   }
 
   function updateActionButtons() {
@@ -54,6 +70,9 @@
     let visible = 0;
 
     tbody.querySelectorAll('tr').forEach((row) => {
+      // only the rows of the chosen type (Product / Machine / Supply)
+      const matchesType = row.dataset.item_type === currentType;
+
       // text search across whole row
       const matchesText = !text || row.textContent.toLowerCase().includes(text);
 
@@ -67,8 +86,9 @@
         }
       }
 
-      const show = matchesText && matchesFilters;
+      const show = matchesType && matchesText && matchesFilters;
       row.hidden = !show;
+      if (!show) row.classList.remove('is-selected');
       if (show) visible++;
     });
 
@@ -100,20 +120,66 @@
     updateActionButtons();
   }
 
+  /* ---------- type buttons ---------- */
+  // Category filter menu: only list categories that exist for the chosen type
+  function syncCategoryMenu() {
+    const present = new Set(
+      Array.from(tbody.querySelectorAll('tr'))
+        .filter((r) => r.dataset.item_type === currentType)
+        .map((r) => r.dataset.category)
+    );
+    table.querySelectorAll('th[data-col="category"] [data-action="filter"]').forEach((b) => {
+      b.style.display = present.has(b.dataset.value) ? '' : 'none';
+    });
+  }
+
+  function setType(type) {
+    if (!TYPES.includes(type)) return;
+    currentType = type;
+    try { sessionStorage.setItem('dirType', type); } catch (e) {}
+
+    // button highlight + which columns show (CSS reads data-view)
+    typeTabs.forEach((b) => {
+      const on = b.dataset.type === type;
+      b.classList.toggle('is-active', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    table.dataset.view = type;
+    if (nameLabel) nameLabel.textContent = NAME_LABELS[type];
+
+    // start fresh: no selection, no column filters
+    clearSelection();
+    Object.keys(filters).forEach((k) => delete filters[k]);
+    table.querySelectorAll('.th-menu').forEach((menu) => {
+      menu.hidden = true;
+      menu.querySelectorAll('[data-action="filter"]').forEach((b) => b.classList.remove('active'));
+      menu.querySelector('[data-action="filter-all"]')?.classList.add('active');
+    });
+
+    syncCategoryMenu();
+    applyAll();
+  }
+
+  typeTabs.forEach((b) => b.addEventListener('click', () => setType(b.dataset.type)));
+
   /* ---------- search ---------- */
   searchInput?.addEventListener('input', applyAll);
 
-  /* ---------- checkbox select ---------- */
-  checkAll?.addEventListener('change', () => {
-    visibleRows().forEach((r) => {
-      const cb = r.querySelector('.row-check');
-      if (cb) cb.checked = checkAll.checked;
-    });
-    updateActionButtons();
-  });
+  /* ---------- row selection (click a row) ---------- */
+  tbody.addEventListener('click', (e) => {
+    const row = e.target.closest('tr');
+    if (!row || row.hidden) return;
 
-  tbody.addEventListener('change', (e) => {
-    if (e.target.classList.contains('row-check')) updateActionButtons();
+    if (e.ctrlKey || e.metaKey) {
+      // Ctrl/Cmd + click: add or remove this row from the selection
+      row.classList.toggle('is-selected');
+    } else {
+      // plain click: select only this row (click it again to unselect)
+      const onlyThis = row.classList.contains('is-selected') && selectedRows().length === 1;
+      clearSelection();
+      if (!onlyThis) row.classList.add('is-selected');
+    }
+    updateActionButtons();
   });
 
   /* ---------- column header menus ---------- */
@@ -254,6 +320,9 @@
         const el = document.getElementById('f_' + f);
         if (el) el.value = item[f] ?? '';
       });
+    } else {
+      // Add: start with the type that is currently showing
+      typeSelect.value = currentType;
     }
     syncTypeFields();
     document.getElementById('f_name').focus();
@@ -309,6 +378,8 @@
 
     btnSave.disabled = false;
     if (res.ok) {
+      // after the reload, show the type that was just saved
+      try { sessionStorage.setItem('dirType', fields.item_type); } catch (err) {}
       reloadWithMessage(res.message);
     } else {
       showFormErrors(res.errors);
@@ -316,5 +387,5 @@
   });
 
   // initial
-  applyAll();
+  setType(currentType);
 })();
